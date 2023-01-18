@@ -13,7 +13,7 @@ knitr:
   
 format: 
   revealjs:
-    theme: [default,default.scss]
+    theme: [default,default_R_tuto.scss]
     slide-number: true
     mouse-wheel: true
     smaller: false
