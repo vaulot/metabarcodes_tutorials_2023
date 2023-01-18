@@ -1,0 +1,35 @@
+project:
+  title: "ECODIM 2023"
+
+execute: 
+  echo: true
+  eval: true
+  cache: true
+  warning: false
+  
+knitr:
+  opts_chunk: 
+    results: hold
+  
+format: 
+  revealjs:
+    theme: [default,default.scss]
+    slide-number: true
+    mouse-wheel: true
+    smaller: false
+    fig-align: center
+    center: false
+    scrollable: true
+    height: 1000
+    width: 1400
+    self-contained: false
+    margin: 0.1
+    code-block-background: true
+    highlight-style: arrow-dark
+    code-line-numbers: false
+    code-copy: true
+    fig-width: 8
+    fig-height: 6
+
+
+

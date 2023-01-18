@@ -1,0 +1,54 @@
+layout: true
+
+# Display tables
+
+---
+  
+## Default
+  
+```{r, tidy=FALSE}
+samples_wide
+```
+
+---
+  
+## Package kableExtra
+  
+```{r, tidy=FALSE}
+library(kableExtra)
+
+kbl(samples_wide) %>%
+  kable_styling(font_size = 9) 
+```
+
+
+
+---
+  
+## Package kableExtra
+  
+```{r, tidy=FALSE}
+kbl(samples_wide, 
+    col.names = c("sample", "transect", "station", "date", "time", "depth", 
+                  "level", "lat", "long", "pico", "nano")) %>%
+  kable_styling(font_size = 9) 
+```
+
+---
+  
+## Package kableExtra
+  
+```{r, tidy=FALSE}
+kbl(samples_wide, linesep = "", 
+    col.names = c("sample", "transect", "station", "date", "time", "depth", 
+                  "level", "lat", "long", "pico", "nano")) %>%
+  kable_styling(font_size = 9,
+                bootstrap_options = c("condensed") ) %>%
+  add_header_above(header = c(" " = 9, "cell/ml"=2)) %>% 
+  scroll_box(width = "600px", height = "300px") 
+```
+
+
+
+---
+  

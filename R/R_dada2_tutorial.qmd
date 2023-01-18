@@ -1,38 +1,16 @@
----
-title: "Tutorial - R Dada2 metabarcode analyis"
-author: "Daniel Vaulot"
-date: '`r format(Sys.time(), "%d %m %Y")`'
-header-includes:
-   - \usepackage{color, fancyvrb}
-output:
-  rmdformats::readthedown:
-    highlight: kate
-    number_sections : yes    
-  pdf_document: 
-    toc: yes
-    toc_depth: 2
-    number_sections : yes
----
+{{< include chunks/head.qmd >}}
 
-```{r setup, echo=FALSE}
-  knitr::opts_chunk$set(fig.width=6, 
-                        fig.height=6, 
-                        eval=TRUE, 
-                        cache=TRUE,
-                        echo=TRUE,
-                        prompt=FALSE,
-                        tidy=TRUE,
-                        comment=NA,
-                        message=FALSE,
-                        warning=FALSE)
+[05 - Metabarcode processing with dada2]{.subtitle .absolute bottom="450"}
 
-```
 
-# Aim
 
-This tutorial explain how to process Illumina data with the Dada2 suite as implemented in R (dada2 is also implemented in Qiime).  It is adapted from : https://benjjneb.github.io/dada2/tutorial.html
+## Introduction
 
-# Directory structure
+This tutorial explain how to process Illumina data with the Dada2 suite as implemented in R (dada2 is also implemented in Qiime).  
+
+It is adapted from the [Dada2 tutorial](https://benjjneb.github.io/dada2/tutorial.html)
+
+### Directory structure
 
 Relative to the main directory from GitHub
 
@@ -40,22 +18,25 @@ Relative to the main directory from GitHub
 * **../fastq_filtered** : fastq files after filtration
 * **../qual_pdf** : qual pdf files
 * **../dada2** : dada2 processed files
-* **../databases** : PR2 database files (contains PR2 database formatted for dada2 - https://github.com/pr2database/pr2database/releases/)
+* **../databases** : [PR2 database file](https://github.com/pr2database/pr2database/releases/)
 * **../blast** : BLAST files output
-* **../img** : Images
-* **../R_dada2** : This tutorial for Illumina files
+* **../R** : This tutorial for Illumina files
 
-# Downloads
+## Downloads
 
 Install the following software :  
 
-* R : https://pbil.univ-lyon1.fr/CRAN/
+* [R](https://cran.r-project.org/index.html)
 
-* R studio : https://www.rstudio.com/products/rstudio/download/#download
+* [R studio](https://www.rstudio.com/products/rstudio/download/#download)
 
-* Download and install the following libraries by running under R studio the following lines
+Download and install the following libraries by running under R studio the following lines
 
-```R
+
+
+```{r}
+#| eval: false
+#| 
 install.packages("readr")     # To read and write files
 install.packages("readxl")    # To read excel files
 
@@ -68,44 +49,51 @@ install.packages("stringr")   # To manipulate strings
 install.packages("ggplot2")   # To do plots
 
 
-source("https://bioconductor.org/biocLite.R")
-biocLite('dada2')             # metabarcode data analysis
-biocLite('phyloseq')          # metabarcode data analysis
-biocLite('Biostrings')        # needed for fastq.geometry
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("Biobase")
+BiocManager::install("Biostrings")
+BiocManager::install("dada2")
+BiocManager::install("phyloseq")
 
 ```
 
-# Data used
+## Data used
 
-```{r , out.width='50%', fig.align="center", echo=FALSE}
-knitr::include_graphics('../img/carbom_cruise.png')
-```
+![](img/carbom_cruise.png){.absolute width="500" top=100 right=50}
 
-
+:::: columns
+::: {.column width="60%"}
 The samples originate from the CARBOM cruise (2013) off Brazil.  
 
 Samples have been sorted by flow cytometry and 3 genes have been PCR amplified :  
 
 * 18S rRNA - V4 region
 * 16S rNA with plastid
-* nifH
+* _nifH_
 
 The PCR products have been sequenced by 1 run of Illumina 2*250 bp.
 The data consist of the picoplankton samples from one transect and fastq files have been subsampled with 1000 sequences per sample.
+:::
+::::
 
-## References
+
+### References
 
 * Gerikas Ribeiro C, Marie D, Lopes dos Santos A, Pereira Brandini F, Vaulot D. (2016). Estimating microbial populations by flow cytometry: Comparison between instruments. Limnol Oceanogr Methods 14:750–758.
 * Gerikas Ribeiro C, Lopes dos Santos A, Marie D, Brandini P, Vaulot D. (2018). Relationships between photosynthetic eukaryotes and nitrogen-fixing cyanobacteria off Brazil. ISME J in press.
 * Gerikas Ribeiro C, Lopes dos Santos A, Marie D, Helena Pellizari V, Pereira Brandini F, Vaulot D. (2016). Pico and nanoplankton abundance and carbon stocks along the Brazilian Bight. PeerJ 4:e2587.
 
 
-# Tutorial description
+# Set-up
 
+## Load the necessary libraries
 
-## Load the necessary libraries**
-
-```{r, results='hide', message=FALSE}
+```{r}
+#| results: hide
+#| message: false
+#| warning: false
   library("dada2")
   library("phyloseq") 
   library("Biostrings")
@@ -123,6 +111,7 @@ The data consist of the picoplankton samples from one transect and fastq files h
 
   library("kableExtra") # necessary for nice table formatting with knitr
 ```
+
 
 ## Set up directories
 
@@ -145,10 +134,12 @@ Create directories that will be used to stored the files at the different stage 
   dir.create(blast_dir)
 ```
   
+## Setup variables
+#### Primers
 
-## Primers
+Note that the primers are degenerated.  
 
-Note that the primers are degenerated.  Dada2 has an option to remove primers (FilterandTrim) but this function will not accept degeneracy.  
+Dada2 has an option to remove primers (`FilterandTrim`) but this function will not accept degeneracy.  
 
 ```{r}
   primer_set_fwd = c("CCAGCAGCCGCGGTAATTCC", "CCAGCACCCGCGGTAATTCC", 
@@ -158,7 +149,9 @@ Note that the primers are degenerated.  Dada2 has an option to remove primers (F
   primer_length_rev <- str_length(primer_set_rev[1])
 ```
 
-## PR2 tax levels
+<br>
+
+#### PR2 tax levels
 
 ```{r}
   PR2_tax_levels <- c("Kingdom", "Supergroup","Division", "Class", 
@@ -166,9 +159,9 @@ Note that the primers are degenerated.  Dada2 has an option to remove primers (F
 ```
 
 
-## Examine the fastQ files
+# Examine the fastQ files
 
-### Construct a list of the fastq files
+## Construct a list of the fastq files
 
 It is assumed that the sample names are at the start of file name and separated by _.
 
@@ -182,41 +175,55 @@ It is assumed that the sample names are at the start of file name and separated 
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
   sample.names <- str_split(basename(fns_R1), pattern = "_", simplify = TRUE) 
   sample.names <- sample.names[,1]
+  sample.names
 
 ```
-### Compute number of paired reads
 
-```{r fastq_reads, warning=FALSE}
+
+## Compute number of paired reads
+
+```{r}
+#| label: fastq_reads
+#| warning: false
 # create an empty data frame  
   df <- data.frame()  
 
 # loop through all the R1 files (no need to go through R2 which should be the same) 
 
   for(i in 1:length(fns_R1)) { 
-    
     # use the dada2 function fastq.geometry
       geom <- fastq.geometry(fns_R1[i])
-      
     # extract the information on number of sequences and file name 
       df_one_row <- data.frame (n_seq=geom[1], file_name=basename(fns_R1[i]) )
-      
     # add one line to data frame
       df <- bind_rows(df, df_one_row)
- } 
-# display number of sequences and write data to small file
-  knitr::kable(df)
-  # write.table(df, file = "n_seq.txt", 
-  #             sep="\t", row.names = FALSE, na="", quote=FALSE)
+  } 
 
-# plot the histogram with number of sequences
-  ggplot(df, aes(x=n_seq)) + 
-        geom_histogram( alpha = 0.5, position="identity", binwidth = 10) +
-        xlim(0, 2000)
 ```
 
-### Plot quality for reads
 
-```{r fastq_quality}
+### Display results
+
+```{r}
+#| label: fastq_reads_results
+#| warning: false
+
+# display number of sequences
+  DT::datatable(df)
+
+# plot the histogram with number of sequences
+  g <- ggplot(df, aes(x=n_seq)) + 
+        geom_histogram( alpha = 0.5, position="identity", binwidth = 10) +
+        xlim(0, 2000)
+  
+  print(g)
+```
+
+
+## Plot quality for reads
+
+```{r}
+#| label: fastq_quality
  for(i in 1:length(fns)) { 
    
   # Use dada2 function to plot quality
@@ -233,31 +240,43 @@ It is assumed that the sample names are at the start of file name and separated 
 
 ```
 
-## Filter and Trim the reads 
+# Filter and Trim the reads 
 
+## Two approaches
 The dada2 algorithm requires primers to be removed prior to processing.
 
 
 * Using dada2 there are 2 possibilities
     - Remove by sequence, but dada2 does not allow for ambiguities
     - Remove by position, which is not a problem for Illumina sequences but is a problem for 454
-* For complex situation we recommend to use **cutadapt** to remove the primers : http://cutadapt.readthedocs.io/en/stable/guide.html#.  
-The program is really very powerful.
+* For complex situation we recommend to use **[cutadapt](http://cutadapt.readthedocs.io/en/stable/guide.html)** to remove the primers.  
+
 
 ### Create names for the filtered files
-We create the name of the files that will be generated by the `filterAndTrim` function in the step below. These names are composed by the path name ("../fastq_filtered/"), the sample names, the read number (R1 or R2) and a "_filt" suffix.
+We create the name of the files that will be generated by the `filterAndTrim` function in the step below. 
+
+These names are composed by the path name ("../fastq_filtered/"), the sample names, the read number (R1 or R2) and a "_filt" suffix.
+
 ```{r}
   filt_R1 <- str_c(filtered_dir, sample.names, "_R1_filt.fastq")
   filt_R2 <- str_c(filtered_dir, sample.names, "_R2_filt.fastq")
 ```  
-  
-### Removing the primers by sequence (DO NOT EXECUTE THIS STEP)
 
-* Go to next step
 
-The next piece of code could be used to remove the primers by **sequence**.  The dada2 package does not allow for primer degeneracy.  Since our forward primer is degenerated at two positions, all four combinations need to be tested.  However it will be necessary to re-assemble after that the 4 fastQ files created (which has not to done).  So the better strategy is to remove primer by trunction (see next step).
+## Method 1 - Removing the primers by sequence
 
-```{r, eval = FALSE}
+ (DO NOT EXECUTE THIS STEP)
+
+The next piece of code could be used to remove the primers by **sequence**.  
+
+The dada2 package does not allow for primer degeneracy.  Since our forward primer is degenerated at two positions, all four combinations need to be tested.  
+
+However it will be necessary to re-assemble after that the 4 fastQ files created (which has not to done).  
+
+So the better strategy is to remove primer by truncation (see next step).
+
+```{r}
+#| eval: false
 # On Windows set multithread=FALSE  
 
   out_all <-data.frame(id=length(fns_R1))
@@ -268,16 +287,11 @@ The next piece of code could be used to remove the primers by **sequence**.  The
     out_all <- cbind(out_all, out)
 
   }
+
+  knitr::kable(out_all)
 ```
 
-
-```{r, eval = FALSE, fig.cap="Number of sequences recognized by each primer combination."}
-  knitr::kable(out_all,"latex")%>%
-         kable_styling(bootstrap_options = "striped", font_size = 7)
-```
-
-
-###  Remove primers by truncation and filter
+##  Method 2 - Remove primers by truncation and filter
 
 Filter all sequences with N, truncate R2 to 240 bp 
 
@@ -286,57 +300,96 @@ Filter all sequences with N, truncate R2 to 240 bp
                        truncLen=c(250,240), trimLeft = c(primer_length_fwd,primer_length_rev),
                        maxN=0, maxEE=c(2, 2), truncQ=10, rm.phix=TRUE,  
                        compress=FALSE, multithread=FALSE) 
+  knitr::kable(out)
 ```
 
-## Dada2 processing
+# Dada2 processing
     
-### Learn error rates
+## Learn error rates
 
 The error rates are plotted.
 
-```{r error_rates}
+#### R1
+
+```{r}
+#| label: error_rates_R1
+#| results: hold
+
   err_R1 <- learnErrors(filt_R1, multithread=FALSE)
 
   plotErrors(err_R1, nominalQ=TRUE)
-  
+```
+<br>
+
+#### R2
+
+```{r}
+#| label: error_rates_R2
+#| results: hold
+
   err_R2 <- learnErrors(filt_R2, multithread=FALSE)
 
   plotErrors(err_R2, nominalQ=TRUE)
 ```
 
-### Dereplicate the reads
+## Dereplicate the reads
+
+#### R1
 
 ```{r}
   derep_R1 <- derepFastq(filt_R1, verbose=FALSE)
-  derep_R2 <- derepFastq(filt_R2, verbose=FALSE)
   
 # Name the derep-class objects by the sample names
   names(derep_R1) <- sample.names
+```
+
+<br>
+
+#### R2
+
+```{r}
+  derep_R2 <- derepFastq(filt_R2, verbose=FALSE)
+  
+# Name the derep-class objects by the sample names
   names(derep_R2) <- sample.names 
 ```
 
-### Sequence-variant inference algorithm to the dereplicated data
-   
+## Sequence-variant inference algorithm to the dereplicated data
+
+#### R1
+
 ```{r}
     dada_R1 <- dada(derep_R1, err=err_R1, multithread=FALSE, pool=FALSE)
-    dada_R2 <- dada(derep_R2, err=err_R2, multithread=FALSE, pool=FALSE)
     
     dada_R1[[1]]
+```
+
+<br>
+
+#### R2
+
+```{r}
+    dada_R2 <- dada(derep_R2, err=err_R2, multithread=FALSE, pool=FALSE)
+    
     dada_R2[[1]]
 ```
 
-### Merge sequences 
+## Merge sequences 
 
 
 ```{r}
     mergers <- mergePairs(dada_R1, derep_R1, dada_R2, derep_R2, verbose=TRUE)
     
   # Inspect the merger data.frame from the first sample
-    knitr::kable(head(mergers[[1]]) )
+
+  df_table <- mergers[[1]] %>% 
+    mutate(sequence = str_c(str_sub(sequence, 1, 20), "..."))
+
+  kable(df_table, "html")
+
 ```
 
-
-### Make sequence table 
+## Make sequence table 
 
 ```{r}
     seqtab <- makeSequenceTable(mergers)
@@ -348,12 +401,17 @@ The error rates are plotted.
 
   # Inspect distribution of sequence lengths
     table(nchar(getSequences(seqtab))) 
+    
+    
 ```
 
-### Remove chimeras
+## Remove chimeras
 
 Note that remove chimeras will produce spurious results if primers have not be removed.  The parameter `methods` can be `pooled` or `consensus`
 ```{r}
+#| results: hold
+
+
     seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=FALSE, verbose=TRUE)
 
   # Compute % of non chimeras
@@ -361,9 +419,10 @@ Note that remove chimeras will produce spurious results if primers have not be r
     paste0("total number of sequences : ",sum(seqtab.nochim))
     
 ```
+
 In our case there were no chimeras found.  It is noteworthy that the total number of sequences is almost twice that what is recovered with **mothur** which is **2573**
 
-### Track number of reads at each step
+## Track number of reads at each step
 ```{r}
   # define a function
     getN <- function(x) sum(getUniques(x))
@@ -378,14 +437,17 @@ In our case there were no chimeras found.  It is noteworthy that the total numbe
     write_tsv(data.frame(track), str_c(dada2_dir,"read_numbers_dada2.tsv"))
 ```
 
-### Transforming and saving the ASVs sequences
+## Transforming and saving the ASVs sequences
 
-In the OTU put of dada2, otu names are the sequences.  We change to give a Otuxxx name and the sequences are stored in the taxonomy table.
+In the output of dada2, otu names are the sequences.  
+
+We change to give a Otuxxx name and the sequences are stored in the taxonomy table.
 
 ```{r}
   seqtab.nochim_trans <- as.data.frame(t(seqtab.nochim)) %>% 
     rownames_to_column(var = "sequence") %>%
-    rowid_to_column(var = "OTUNumber") %>%
+    rowid_to_column(var = "OTUNumber") %>% 
+    tibble::remove_rownames() %>%
     mutate(OTUNumber = sprintf("otu%04d", OTUNumber)) %>% 
     mutate(sequence = str_replace_all(sequence, "(-|\\.)",""))
 
@@ -394,17 +456,20 @@ In the OTU put of dada2, otu names are the sequences.  We change to give a Otuxx
 
   names(seq_out) <- df$OTUNumber
 
-  Biostrings::writeXStringSet(seq_out, str_c(dada2_dir, "CARBOM_ASV_no_taxo.fasta"), compress=FALSE, width = 20000)
+  Biostrings::writeXStringSet(seq_out, str_c(dada2_dir, "CARBOM_ASV_no_taxo.fasta"), 
+                              compress=FALSE, width = 20000)
 
 ```
   
 
-### Assigning taxonomy
+## Assigning taxonomy
 
 This step is quite long...  If you want to skip please go to next step.
 
-```{r assign_taxa, eval=FALSE}
-    pr2_file <- paste0(database_dir, "pr2_version_4.72_dada2.fasta.gz")
+```{r}
+#| label: assign_taxa
+#| eval: false
+    pr2_file <- paste0(database_dir, "pr2_version_4.14.0_SSU_dada2.fasta.gz")
     taxa <- assignTaxonomy(seqtab.nochim, refFasta=pr2_file,  
                            taxLevels = PR2_tax_levels,
                            minBoot = 0, outputBootstraps = TRUE,
@@ -412,7 +477,14 @@ This step is quite long...  If you want to skip please go to next step.
     saveRDS(taxa, str_c(dada2_dir, "CARBOM.taxa.rds"))
 ```
 
-### Export data as produced by Dada2
+
+# Export data
+
+## Export
+
+We need to reformat the data produced by dada2 if we want to use for further analysis, for example with Phyloseq or BLAST.
+
+#### Export data as produced by Dada2
 
 ```{r}
   taxa <-  readRDS(str_c(dada2_dir, "CARBOM.taxa.rds"))  
@@ -421,24 +493,30 @@ This step is quite long...  If you want to skip please go to next step.
   write_tsv(as.tibble(seqtab.nochim), path = str_c(dada2_dir, "seqtab.txt"))
 ```
 
-### Appending taxonomy and boot to the sequence table
+<br>
+
+#### Appending taxonomy and boot to the sequence table
 
 ```{r}
     taxa_tax <- as.data.frame(taxa$tax)
     taxa_boot <- as.data.frame(taxa$boot) %>% 
       rename_all(funs(str_c(.,"_boot")))
-    seqtab.nochim_trans <- taxa_tax %>% 
-      bind_cols(taxa_boot) %>% 
-      bind_cols(seqtab.nochim_trans) 
+    seqtab.nochim_trans <- seqtab.nochim_trans %>% 
+      bind_cols(taxa_tax) %>% 
+      bind_cols(taxa_boot)
 
 ```
 
 
-### Filter for 18S
+## Filter for 18S
 
-Remember that we sequenced 3 genes (18S, 16S plastid and nifH.  We remove the sequences are not 18S by selecting only bootstrap value for Supergroup in excess of 80. 
+Remember that we sequenced 3 genes (18S, 16S plastid and _nifH_).  
+
+We remove the sequences that are not 18S by selecting only bootstrap values for Supergroup in excess of 80. 
 
 ```{r}
+#| results: hold
+
     bootstrap_min <- 80
 
   # Filter based on the bootstrap
@@ -447,10 +525,13 @@ Remember that we sequenced 3 genes (18S, 16S plastid and nifH.  We remove the se
   
   # Create a database like file for dada2
     write_tsv(seqtab.nochim_18S, str_c(dada2_dir, "CARBOM_dada2.database.tsv"))
+    
+    cat("Before filtration - # of sequences: ", nrow(seqtab.nochim_trans), "\n")
+    cat("After filtration - # of sequences: ", nrow(seqtab.nochim_18S), "\n")
 
 ```
 
-### Write FASTA file for BLAST analysis with taxonomy
+## Write FASTA file for BLAST analysis with taxonomy
 
 Use the Biostrings library
 
@@ -468,32 +549,19 @@ Use the Biostrings library
                                 df$Species,
                                 sep="|")
 
-  Biostrings::writeXStringSet(seq_out, str_c(blast_dir, "CARBOM_ASV.fasta"), compress=FALSE, width = 20000)
+  Biostrings::writeXStringSet(seq_out, str_c(blast_dir, "CARBOM_ASV.fasta"), 
+                              compress=FALSE, width = 20000)
 
 ```
 
-This file can be sent to a server and a BLAST analysis can be done using the following qsub file
+## Write FASTA file for BLAST analysis with taxonomy
 
-```
+This file can be sent to a server and a BLAST analysis can be done using the following bash file
+
+```{bash}
+#| eval: false
 
 #!/bin/bash
-# Commands starting with  '#$' are interpreted by SGE
-# Shell to be used for the job
-#$ -S /bin/bash
-# User to be informed
-#$ -M vaulot@sb-roscoff.fr
-# Export all environment variable
-#$ -V
-# Send a message by email  at beginning (b), end (e) and abort (a) of job
-#$ -m bea
-# Standard output.  Can use '-j y' to add stderr with stdout
-#$ -o repl
-# Send the commande from the curent directory where the script reside
-#$ -cwd
-# Define environmental variables
-
-# submitted with
-# qsub -q short.q qsub_blast_antar.sh
 
 # Replace the next line by the location of the directory where you have your data
 DIR_PROJECT="/projet/sbr/ccebarcodep1408/workshop_nz_2018/blast/"
@@ -508,28 +576,28 @@ BLAST_TSV=$DIR_PROJECT$FILE".blast.tsv"
 OUT_FMT="6 qseqid sseqid sacc stitle sscinames staxids sskingdoms sblastnames pident slen length mismatch gapopen qstart qend sstart send evalue bitscore"
 
 blastn -max_target_seqs 100 -evalue 1.00e-10 -query $FASTA -out $BLAST_TSV -db /db/blast/all/nt -outfmt "$OUT_FMT"
-
 ```
-
 
 
 ## Phyloseq
 
-* Create and save a phyloseq object from dada2 results
+Create and save a phyloseq object from dada2 results
 
 ```{r}
 samdf <- data.frame(sample_name=sample.names)
 rownames(samdf) <- sample.names
 
 OTU <- seqtab.nochim_18S %>% 
-    column_to_rownames("OTUNumber") %>% 
+    tibble::remove_rownames() %>% 
+    tibble::column_to_rownames("OTUNumber") %>% 
     select_if(is.numeric) %>% 
     select(-contains("_boot")) %>% 
     as.matrix() %>% 
     otu_table(taxa_are_rows=TRUE) 
     
-TAX <- seqtab.nochim_18S%>% 
-  column_to_rownames("OTUNumber") %>%
+TAX <- seqtab.nochim_18S %>% 
+  tibble::remove_rownames()%>% 
+  tibble::column_to_rownames("OTUNumber") %>%
   select(Kingdom:Species)%>% 
   as.matrix() %>%  
   tax_table()

@@ -1,0 +1,21 @@
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+ source('chunks/init.R')
+```
+
+[R course]{.title .absolute bottom="550"}
+
+[**Daniel Vaulot**]{.presenter .absolute bottom="300"}
+
+[`r Sys.Date()`]{.absolute .smaller bottom="250"}
+
+![](img/institutions/logo_ecodim.png){.absolute left="600" bottom="20" width="200"}
+
+![](img/institutions/logo_SBR.png){.absolute left="0" bottom="20" height="100"}
+
+![](img/institutions/NTU-Logo-full-colour.png){.absolute right="0" bottom="20" height="100"}
+
+![](img/R/R-logo.png){.absolute right="50" top="50" height="300"}
+
