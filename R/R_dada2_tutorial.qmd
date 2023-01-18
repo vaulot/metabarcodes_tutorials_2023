@@ -61,7 +61,7 @@ BiocManager::install("phyloseq")
 
 ## Data used
 
-![](img/carbom_cruise.png){.absolute width="500" top=100 right=50}
+![](img/cruise/carbom_cruise.png){.absolute width="500" top=100 right=50}
 
 :::: columns
 ::: {.column width="60%"}
