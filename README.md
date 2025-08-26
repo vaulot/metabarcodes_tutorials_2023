@@ -40,6 +40,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("Biobase")
 BiocManager::install("Biostrings")
 BiocManager::install("dada2")
+BiocManager::install("phyloseq")
 
 ```
 ### Directory structure
